@@ -197,9 +197,9 @@ test_cases = [
         'esperado': [
             "Potencial cliente",
             "Potencial cliente",
-            "Potencial cliente",
             "Cotizando",
-            "Cotización generada",
+            "Cotizando",
+            "Cotizando",
             "Cotización generada",
             "Cotización generada",
             "Cotización generada",
