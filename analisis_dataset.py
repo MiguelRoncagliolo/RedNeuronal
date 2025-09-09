@@ -1,7 +1,7 @@
 import pandas as pd
 
 # === CONFIG ===
-FILE = "chat_user_turns_v4_5000_aug.csv"  # Ajusta si usas otro archivo
+FILE = "chat_user_turns_v4_clean.csv"  # Ajusta si usas otro archivo
 
 # === CARGAR DATASET ===
 df = pd.read_csv(FILE)

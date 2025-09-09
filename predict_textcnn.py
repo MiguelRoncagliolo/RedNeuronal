@@ -32,51 +32,49 @@ def normalize_patterns(text: str):
     s = re.sub(r"\bdestino\s*:\s*", "destino ", s)
     s = re.sub(r"\bdirección de salida\s*:\s*", "origen ", s)
 
-    # limpiar frase de relleno
+    # limpiar frases de relleno
     s = re.sub(r"\bla dirección es\b", ", ", s)
 
-    # "hasta" -> origen/destino (solo si aún no están)
+    # "hasta" -> origen/destino si aún no están
     if "origen" not in s and "destino" not in s:
         s = re.sub(r"^\s*(.+?)\s+hasta\s+(.+)$", r"origen \1 destino \2", s)
 
     # quitar marcador "salida el "
     s = re.sub(r"\bsalida el\s+", "", s)
 
-    # fechas con mes textual -> "fecha dd/mm(/yyyy)"
+    # fechas con mes textual
     s = re.sub(
         r"\b(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+de\s+(\d{4}))?\b",
         lambda m: f"fecha {int(m.group(1)):02d}/{MONTHS[m.group(2)]}" + (f"/{m.group(3)}" if m.group(3) else ""),
         s
     )
-    # fechas numéricas -> solo si NO está ya precedida por "fecha "
+    # fechas numéricas
     s = re.sub(
         r"(?<!fecha\s)\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b",
         lambda m: f"fecha {int(m.group(1)):02d}/{int(m.group(2)):02d}" + (f"/{m.group(3)}" if m.group(3) else ""),
         s
     )
 
-    # casos de "regreso a las HH(:MM)?" -> "regreso hora HH:MM"
-    s = re.sub(
-        r"\bregreso a las\s+(\d{1,2})(?::(\d{1,2}))?\b",
-        lambda m: f"regreso hora {int(m.group(1)):02d}:{int((m.group(2) or '0')):02d}",
-        s
-    )
+    # horas
+    s = re.sub(r"\bregreso a las\s+(\d{1,2})(?::(\d{1,2}))?\b",
+               lambda m: f"regreso hora {int(m.group(1)):02d}:{int((m.group(2) or '0')):02d}", s)
     s = re.sub(r"\bcon\s+regreso\s+(?=hora\b)", "regreso ", s)
-
-    # horas: 12h/12hr/12hrs → "hora 12:00"
     s = re.sub(r"\b(\d{1,2})\s*(?:h|hr|hrs|horas)\b", lambda m: f"hora {int(m.group(1)):02d}:00", s)
-    # hh:mm o h:mm → "hora hh:mm" si NO está ya precedido por "hora "
     s = re.sub(r"(?<!hora\s)\b(\d{1,2})[:h](\d{1,2})\b", _norm_time_hhmm, s)
-    # "a las 12" → "hora 12:00" si NO tiene "hora " antes
     s = re.sub(r"(?<!hora\s)\ba las\s+(\d{1,2})\b", lambda m: f"hora {int(m.group(1)):02d}:00", s)
-    # si quedó "a las hora XX:YY", elimina el "a las "
     s = re.sub(r"\ba las\s+(?=hora\b)", "", s)
 
-    # cantidad: "somos 4 (personas)" / "para 4" → "somos 4"
+    # cantidad
     s = re.sub(r"\b(somos|para)\s+(\d{1,3})(\s*personas?)?\b", r"somos \2", s)
 
+    # eliminar expresiones confusas y errores comunes de ciudades
+    
+    s = re.sub(r"\b(con mi familia|corporativo|ida y vuelta|traslado)\b", "", s)
+
+    # limpiar espacios extra
     s = re.sub(r"\s+", " ", s).strip()
     return s
+
 
 
 class Vocab:
@@ -90,7 +88,7 @@ class Vocab:
         return len(self.itos)
 
 class TextCNN(nn.Module):
-    def __init__(self, vocab_size, embed_dim, num_classes, filter_sizes=(3,4,5), num_filters=128, dropout=0.5, pad_idx=0):
+    def __init__(self, vocab_size, embed_dim, num_classes, filter_sizes=(2,3,4,5), num_filters=128, dropout=0.5, pad_idx=0):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embed_dim, padding_idx=pad_idx)
         self.convs = nn.ModuleList([
@@ -112,7 +110,7 @@ def parse_filter_sizes(s: str):
     except Exception:
         return (3,4,5)
 
-def load_model(artifacts_dir, embed_dim=200, num_filters=128, filter_sizes=(3,4,5), pad_idx=0):
+def load_model(artifacts_dir, embed_dim=200, num_filters=128, filter_sizes=(2,3,4,5), pad_idx=0):
     with open(os.path.join(artifacts_dir, "vocab.json"), "r", encoding="utf-8") as f:
         meta = json.load(f)
     vocab = Vocab(meta["itos"])
@@ -151,7 +149,7 @@ if __name__ == "__main__":
     parser.add_argument("--max_len", type=int, default=160)
     parser.add_argument("--embed_dim", type=int, default=200)
     parser.add_argument("--num_filters", type=int, default=128)
-    parser.add_argument("--filter_sizes", type=str, default="3,4,5", help='Ej: "2,3,4,5"')
+    parser.add_argument("--filter_sizes", type=str, default="2,3,4,5", help='Ej: "2,3,4,5"')
     args = parser.parse_args()
 
     # Construir el texto final
