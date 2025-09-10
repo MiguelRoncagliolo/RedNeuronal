@@ -64,11 +64,38 @@ def normalize_patterns(text: str):
     s = re.sub(r"(?<!hora\s)\ba las\s+(\d{1,2})\b", lambda m: f"hora {int(m.group(1)):02d}:00", s)
     s = re.sub(r"\ba las\s+(?=hora\b)", "", s)
 
-    # cantidad
+    # cantidad de personas
     s = re.sub(r"\b(somos|para)\s+(\d{1,3})(\s*personas?)?\b", r"somos \2", s)
 
-    # eliminar expresiones confusas y errores comunes de ciudades
-    
+    # --- Sinónimos de intención ---
+    synonyms = {
+        r"\b(presupuesto|valor|precio)\b": "cotizar",
+        r"\b(hola|buenas|qué tal|buen día|buenas tardes)\b": "saludo",
+        r"\b(reserva|apartado|quiero agendar)\b": "reservar"
+    }
+    for pat, repl in synonyms.items():
+        s = re.sub(pat, repl, s)
+
+    # --- Stopwords / expresiones de relleno ---
+    s = re.sub(r"\b(por favor|quisiera|me podrías|deseo saber|gracias)\b", "", s)
+
+    # --- Alias de ciudades ---
+    city_map = {
+        r"\bsantiago( de chile| centro)?\b": "santiago",
+        r"\b(cdmx|ciudad de méxico)\b": "mexico"
+    }
+    for pat, repl in city_map.items():
+        s = re.sub(pat, repl, s)
+
+    # --- Correcciones de errores comunes ---
+    typo_map = {
+        r"\bcotisaci[óo]n\b": "cotizacion",
+        r"\bdestino+\b": "destino"
+    }
+    for pat, repl in typo_map.items():
+        s = re.sub(pat, repl, s)
+
+    # eliminar expresiones confusas
     s = re.sub(r"\b(con mi familia|corporativo|ida y vuelta|traslado)\b", "", s)
 
     # limpiar espacios extra

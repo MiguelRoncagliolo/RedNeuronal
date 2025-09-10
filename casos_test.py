@@ -259,4 +259,265 @@ test_cases = [
             "Cotización generada",
         ]
     },
+    {
+        'texto': [
+            "Hola, buenas tardes",
+            "Estoy interesado en un traslado",
+            "Origen: Av. Italia 1020, Santiago",
+            "Destino: Aeropuerto Carriel Sur, Concepción",
+            "somos 6 personas",
+            "Fecha 15/10/2025",
+            "Hora 09:15",
+            "solo ida",
+            "¿Incluye maletas grandes?",
+            "Gracias"
+        ],
+        'esperado': [
+            "Potencial cliente",
+            "Potencial cliente",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada"
+        ]
+    },
+    {
+        'texto': [
+            "Buenas noches",
+            "Quiero consultar por un viaje",
+            "Origen: Av. Los Carrera 500, Chillán",
+            "Destino: Av. Colón 1200, Talcahuano",
+            "somos 3 adultos y 1 niño",
+            "Salida el 02/01/2026 a las 07:00",
+            "Con regreso el mismo día a las 21:00",
+            "¿Se puede pagar con transferencia?",
+            "Espero confirmación",
+            "Saludos"
+        ],
+        'esperado': [
+            "Potencial cliente",
+            "Potencial cliente",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada"
+        ]
+    },
+    {
+        'texto': [
+            "Hola!",
+            "Necesito cotizar traslado empresarial",
+            "Origen: Parque Arauco, Santiago",
+            "Destino: Hotel Casino, Viña del Mar",
+            "somos 20 personas",
+            "Fecha 10/12/2025",
+            "Hora 18:30",
+            "ida y vuelta",
+            "Requiero factura electrónica",
+            "Gracias"
+        ],
+        'esperado': [
+            "Potencial cliente",
+            "Potencial cliente",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada"
+        ]
+    },
+    {
+        'texto': [
+            "Buenos días",
+            "Consulta rápida de viaje",
+            "Origen: Av. Argentina 222, Antofagasta",
+            "Destino: Calama, terminal de buses",
+            "somos 5 personas",
+            "Salida el 08/09 a las 14:00",
+            "solo ida",
+            "¿El precio incluye peajes?",
+            "Espero confirmación",
+            "Gracias"
+        ],
+        'esperado': [
+            "Potencial cliente",
+            "Potencial cliente",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada"
+        ]
+    },
+    {
+        'texto': [
+            "Hola equipo",
+            "Quiero información de traslado",
+            "Origen: Rancagua centro",
+            "Destino: Estación Central, Santiago",
+            "somos 2 personas",
+            "Fecha 22/11/2025",
+            "Hora 10:00",
+            "ida y vuelta",
+            "¿Dura mucho el viaje?",
+            "Gracias"
+        ],
+        'esperado': [
+            "Potencial cliente",
+            "Potencial cliente",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada"
+        ]
+    },
+    {
+        'texto': [
+            "Hola!",
+            "Quiero un presupuesto",
+            "Origen: Puerto Varas",
+            "Destino: Aeropuerto El Tepual, Puerto Montt",
+            "somos 3",
+            "Salida el 30/11/2025 a las 05:45",
+            "solo ida",
+            "¿Hay recargo por horario temprano?",
+            "Ok",
+            "Saludos"
+        ],
+        'esperado': [
+            "Potencial cliente",
+            "Potencial cliente",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada"
+        ]
+    },
+    {
+        'texto': [
+            "Buenas",
+            "Cotización traslado urgente",
+            "Origen: Av. Brasil 300, Valparaíso",
+            "Destino: Santiago centro",
+            "somos 4 personas",
+            "Fecha 12/09",
+            "Hora 16:00",
+            "ida y vuelta",
+            "¿Puedo reservar hoy?",
+            "Gracias"
+        ],
+        'esperado': [
+            "Potencial cliente",
+            "Potencial cliente",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada"
+        ]
+    },
+    {
+        'texto': [
+            "Hola, necesito traslado familiar",
+            "Origen: Av. Balmaceda 420, La Serena",
+            "Destino: Ovalle, plaza de armas",
+            "somos 6 personas",
+            "Salida el 01/12/2025",
+            "Hora 12:30",
+            "Con regreso a las 19:00",
+            "¿Aceptan efectivo?",
+            "Listo",
+            "Saludos"
+        ],
+        'esperado': [
+            "Potencial cliente",
+            "Potencial cliente",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada"
+        ]
+    },
+    {
+        'texto': [
+            "Hola buenos días",
+            "Quiero consultar viaje de trabajo",
+            "Origen: Concepción, Mall Plaza Trébol",
+            "Destino: Chillán centro",
+            "somos 2 personas",
+            "Fecha 14/10/2025",
+            "Hora 08:00",
+            "solo ida",
+            "¿Hay disponibilidad?",
+            "Gracias"
+        ],
+        'esperado': [
+            "Potencial cliente",
+            "Potencial cliente",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada"
+        ]
+    },
+    {
+        'texto': [
+            "Buenas tardes",
+            "Necesito cotizar viaje a Viña",
+            "Origen: Plaza de Maipú, Santiago",
+            "Destino: Reñaca, Viña del Mar",
+            "somos 7 personas",
+            "Fecha 20/12/2025",
+            "Hora 11:00",
+            "ida y vuelta",
+            "¿El precio incluye estacionamiento?",
+            "Gracias"
+        ],
+        'esperado': [
+            "Potencial cliente",
+            "Potencial cliente",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada"
+        ]
+    }
+
 ]
