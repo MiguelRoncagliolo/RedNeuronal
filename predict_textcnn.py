@@ -12,95 +12,8 @@ def basic_tokenize(text: str):
     text = re.sub(r"\s+", " ", text.strip())
     return text.split()
 
-# ---- Normalizador (igual que en train) ----
-MONTHS = {
-    "enero":"01","febrero":"02","marzo":"03","abril":"04","mayo":"05","junio":"06",
-    "julio":"07","agosto":"08","septiembre":"09","octubre":"10","noviembre":"11","diciembre":"12"
-}
-
-def _norm_time_hhmm(m):
-    h = int(m.group(1)); mm = m.group(2) or "00"
-    try: mm = f"{int(mm):02d}"
-    except: mm = "00"
-    return f"hora {h:02d}:{mm}"
-
-def normalize_patterns(text: str):
-    s = str(text).lower().strip()
-
-    # normalizar etiquetas con :
-    s = re.sub(r"\borigen\s*:\s*", "origen ", s)
-    s = re.sub(r"\bdestino\s*:\s*", "destino ", s)
-    s = re.sub(r"\bdirección de salida\s*:\s*", "origen ", s)
-
-    # limpiar frases de relleno
-    s = re.sub(r"\bla dirección es\b", ", ", s)
-
-    # "hasta" -> origen/destino si aún no están
-    if "origen" not in s and "destino" not in s:
-        s = re.sub(r"^\s*(.+?)\s+hasta\s+(.+)$", r"origen \1 destino \2", s)
-
-    # quitar marcador "salida el "
-    s = re.sub(r"\bsalida el\s+", "", s)
-
-    # fechas con mes textual
-    s = re.sub(
-        r"\b(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+de\s+(\d{4}))?\b",
-        lambda m: f"fecha {int(m.group(1)):02d}/{MONTHS[m.group(2)]}" + (f"/{m.group(3)}" if m.group(3) else ""),
-        s
-    )
-    # fechas numéricas
-    s = re.sub(
-        r"(?<!fecha\s)\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b",
-        lambda m: f"fecha {int(m.group(1)):02d}/{int(m.group(2)):02d}" + (f"/{m.group(3)}" if m.group(3) else ""),
-        s
-    )
-
-    # horas
-    s = re.sub(r"\bregreso a las\s+(\d{1,2})(?::(\d{1,2}))?\b",
-               lambda m: f"regreso hora {int(m.group(1)):02d}:{int((m.group(2) or '0')):02d}", s)
-    s = re.sub(r"\bcon\s+regreso\s+(?=hora\b)", "regreso ", s)
-    s = re.sub(r"\b(\d{1,2})\s*(?:h|hr|hrs|horas)\b", lambda m: f"hora {int(m.group(1)):02d}:00", s)
-    s = re.sub(r"(?<!hora\s)\b(\d{1,2})[:h](\d{1,2})\b", _norm_time_hhmm, s)
-    s = re.sub(r"(?<!hora\s)\ba las\s+(\d{1,2})\b", lambda m: f"hora {int(m.group(1)):02d}:00", s)
-    s = re.sub(r"\ba las\s+(?=hora\b)", "", s)
-
-    # cantidad de personas
-    s = re.sub(r"\b(somos|para)\s+(\d{1,3})(\s*personas?)?\b", r"somos \2", s)
-
-    # --- Sinónimos de intención ---
-    synonyms = {
-        r"\b(presupuesto|valor|precio)\b": "cotizar",
-        r"\b(hola|buenas|qué tal|buen día|buenas tardes)\b": "saludo",
-        r"\b(reserva|apartado|quiero agendar)\b": "reservar"
-    }
-    for pat, repl in synonyms.items():
-        s = re.sub(pat, repl, s)
-
-    # --- Stopwords / expresiones de relleno ---
-    s = re.sub(r"\b(por favor|quisiera|me podrías|deseo saber|gracias)\b", "", s)
-
-    # --- Alias de ciudades ---
-    city_map = {
-        r"\bsantiago( de chile| centro)?\b": "santiago",
-        r"\b(cdmx|ciudad de méxico)\b": "mexico"
-    }
-    for pat, repl in city_map.items():
-        s = re.sub(pat, repl, s)
-
-    # --- Correcciones de errores comunes ---
-    typo_map = {
-        r"\bcotisaci[óo]n\b": "cotizacion",
-        r"\bdestino+\b": "destino"
-    }
-    for pat, repl in typo_map.items():
-        s = re.sub(pat, repl, s)
-
-    # eliminar expresiones confusas
-    s = re.sub(r"\b(con mi familia|corporativo|ida y vuelta|traslado)\b", "", s)
-
-    # limpiar espacios extra
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
+# Importar normalizador unificado
+from normalizer import normalize_patterns
 
 
 
@@ -213,40 +126,15 @@ if __name__ == "__main__":
         probs = torch.softmax(logits, dim=1).cpu().numpy()
         preds = logits.argmax(dim=1).cpu().numpy()
 
-    # Regla opcional: exigir campos cuando el modelo diga "Cotización generada"
+    # Regla opcional: exigir campos usando normalizador unificado
     if args.enforce_fields:
-        REQ = {
-            "origen": re.compile(r"\borigen\b"),
-            "destino": re.compile(r"\bdestino\b"),
-            "fecha": re.compile(r"\bfecha\b"),
-            "hora": re.compile(r"\bhora\b"),
-            "cantidad": re.compile(r"\bsomos\s+\d{1,3}\b"),
-        }
-        MIN_FIELDS_FOR_QUOTE = 2  # <- umbral para “Cotizando” con ascenso parcial
-
+        from normalizer import apply_enforce_fields
         label2id_local = {v: k for k, v in id2label.items()}
         fixed = []
         for t, pidx in zip(texts, preds):
-            pred_lbl = id2label[int(pidx)]
-            flags = {k: bool(rx.search(t)) for k, rx in REQ.items()}
-            covered = sum(flags.values())
-
-            if covered == len(REQ):
-                # todos los campos => Generada
-                fixed.append(label2id_local["Cotización generada"])
-            elif covered >= MIN_FIELDS_FOR_QUOTE:
-                # algunos campos => al menos Cotizando
-                if pred_lbl == "Potencial cliente":
-                    fixed.append(label2id_local["Cotizando"])
-                else:
-                    fixed.append(int(pidx))
-            else:
-                # pocos o ninguno => deja lo que diga el modelo (o baja si inconsistente)
-                if pred_lbl == "Cotización generada":
-                    fixed.append(label2id_local["Cotizando"])
-                else:
-                    fixed.append(int(pidx))
-
+            fixed_idx = apply_enforce_fields(t, pidx, id2label, label2id_local, 
+                                           enforce_fields=True, min_fields_for_quote=2)
+            fixed.append(fixed_idx)
         preds = np.array(fixed)
 
     for t, pidx, p in zip(texts, preds, probs):

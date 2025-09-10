@@ -46,56 +46,8 @@ def basic_tokenize(text: str):
     return text.split()
 
 
-# ---- Normalizador (fechas/horas/hasta/cantidad) ----
-MONTHS = {
-    "enero":"01","febrero":"02","marzo":"03","abril":"04","mayo":"05","junio":"06",
-    "julio":"07","agosto":"08","septiembre":"09","octubre":"10","noviembre":"11","diciembre":"12"
-}
-
-def _norm_time_hhmm(m):
-    h = int(m.group(1))
-    mm = m.group(2) or "00"
-    try:
-        mm = f"{int(mm):02d}"
-    except:
-        mm = "00"
-    return f"hora {h:02d}:{mm}"
-
-def normalize_patterns(text: str):
-    s = str(text).lower().strip()
-
-    # limpiar frase de relleno
-    s = re.sub(r"\bla dirección es\b", ", ", s)
-
-    # "hasta" -> origen/destino (solo si aún no están)
-    if "origen" not in s and "destino" not in s:
-        s = re.sub(r"^\s*(.+?)\s+hasta\s+(.+)$", r"origen \1 destino \2", s)
-
-    # fechas con mes textual -> "fecha dd/mm(/yyyy)"
-    s = re.sub(
-        r"\b(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)(?:\s+de\s+(\d{4}))?\b",
-        lambda m: f"fecha {int(m.group(1)):02d}/{MONTHS[m.group(2)]}" + (f"/{m.group(3)}" if m.group(3) else ""),
-        s
-    )
-    # fechas numéricas -> solo si NO está ya precedido por "fecha "
-    s = re.sub(
-        r"(?<!fecha\s)\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b",
-        lambda m: f"fecha {int(m.group(1)):02d}/{int(m.group(2)):02d}" + (f"/{m.group(3)}" if m.group(3) else ""),
-        s
-    )
-
-    # horas: 12h/12hr/12hrs → "hora 12:00"
-    s = re.sub(r"\b(\d{1,2})\s*(?:h|hr|hrs|horas)\b", lambda m: f"hora {int(m.group(1)):02d}:00", s)
-    # hh:mm o h:mm → solo si NO tiene "hora " antes
-    s = re.sub(r"(?<!hora\s)\b(\d{1,2})[:h](\d{1,2})\b", _norm_time_hhmm, s)
-    # "a las 12" → "hora 12:00" si NO tiene "hora " antes
-    s = re.sub(r"(?<!hora\s)\ba las\s+(\d{1,2})\b", lambda m: f"hora {int(m.group(1)):02d}:00", s)
-
-    # cantidad: "somos 4 (personas)" / "para 4" → "somos 4"
-    s = re.sub(r"\b(somos|para)\s+(\d{1,3})(\s*personas?)?\b", r"somos \2", s)
-
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
+# Importar normalizador unificado
+from normalizer import normalize_patterns
 
 
 class Vocab:
