@@ -58,7 +58,7 @@ def load_model(artifacts_dir, embed_dim=200, num_filters=128, filter_sizes=(2,3,
     model = TextCNN(vocab_size=len(vocab), embed_dim=embed_dim, num_classes=len(id2label),
                     filter_sizes=filter_sizes, num_filters=num_filters, pad_idx=pad_idx)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    state = torch.load(os.path.join(artifacts_dir, "textcnn.pt"), map_location=device)
+    state = torch.load(os.path.join(artifacts_dir, "best_model.pt"), map_location=device)
     model.load_state_dict(state)
     model.to(device).eval()
     return model, vocab, id2label, device

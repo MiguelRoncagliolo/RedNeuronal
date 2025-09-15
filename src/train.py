@@ -8,6 +8,7 @@ import os
 import random
 import re
 from collections import Counter
+from sklearn.metrics import accuracy_score
 
 import numpy as np
 
@@ -310,7 +311,7 @@ def main():
         if val_f1 > best_val_f1:
             best_val_f1 = val_f1
             bad_epochs = 0
-            torch.save(model.state_dict(), os.path.join(args.save_dir, "textcnn.pt"))
+            torch.save(model.state_dict(), os.path.join(args.save_dir, "best_model.pt"))
             with open(os.path.join(args.save_dir, "vocab.json"), "w", encoding="utf-8") as f:
                 json.dump({"itos": vocab.itos, "label2id": label2id, "id2label": id2label}, f, ensure_ascii=False, indent=2)
         else:
@@ -319,13 +320,29 @@ def main():
                 print("Early stopping.")
                 break
 
-    best_path = os.path.join(args.save_dir, "textcnn.pt")
+    best_path = os.path.join(args.save_dir, "best_model.pt")
     if os.path.exists(best_path):
         model.load_state_dict(torch.load(best_path, map_location=device))
 
     test_loss, test_f1, y_true, y_pred = eval_epoch(model, test_loader, criterion, device)
     print("\n===== TEST RESULTS =====")
     print(f"test_loss {test_loss:.4f} | test_f1 {test_f1:.4f}")
+
+    # Calcular accuracy además de F1
+    test_acc = accuracy_score(y_true, y_pred)
+
+    # Guardar métricas en metrics.json
+    metrics = {
+        "accuracy": float(test_acc),
+        "f1": float(test_f1),
+        "loss": float(test_loss)
+    }
+    with open("metrics.json", "w") as f:
+        json.dump(metrics, f)
+
+    print(f"📊 Metrics guardadas en metrics.json -> {metrics}")
+
+
     print("\nClassification report:")
     print(classification_report(y_true, y_pred, target_names=[id2label[i] for i in range(len(id2label))], digits=4))
     print("Confusion matrix:")
