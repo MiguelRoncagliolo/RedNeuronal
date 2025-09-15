@@ -1,14 +1,12 @@
 # evaluar_progreso.py
-import re
 import torch
-import numpy as np
 
 # Utilidades del predictor y normalizador unificado
-from predict_textcnn import load_model, encode_texts, parse_filter_sizes
-from normalizer import normalize_history_and_join, apply_enforce_fields
+from src.predict_text import load_model, encode_texts, parse_filter_sizes
+from src.normalizer import normalize_history_and_join, apply_enforce_fields
 
 # ================== Config ==================
-ARTIFACTS_DIR = "artifacts_textcnn"
+ARTIFACTS_DIR = "../artifacts_textcnn"
 EMBED_DIM = 200
 NUM_FILTERS = 128
 FILTER_SIZES_STR = "2,3,4,5"
@@ -129,5 +127,5 @@ def evaluar_modelo(test_cases):
 
 if __name__ == "__main__":
     # Debes tener un archivo test_cases.py con la variable `test_cases`
-    from casos_test import test_cases
+    from src.tests import test_cases
     evaluar_modelo(test_cases)
