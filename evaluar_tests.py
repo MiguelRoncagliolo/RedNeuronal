@@ -3,8 +3,9 @@ import re
 import torch
 import numpy as np
 
-# Utilidades del predictor (usa tu versión con normalize_patterns)
-from predict_textcnn import load_model, encode_texts, normalize_patterns, parse_filter_sizes
+# Utilidades del predictor y normalizador unificado
+from predict_textcnn import load_model, encode_texts, parse_filter_sizes
+from normalizer import normalize_history_and_join, apply_enforce_fields
 
 # ================== Config ==================
 ARTIFACTS_DIR = "artifacts_textcnn"
@@ -16,14 +17,7 @@ MAX_LEN = 256
 APPLY_NORMALIZER = True
 ENFORCE_FIELDS = True   # pon en False para evaluar solo la red
 
-# Campos obligatorios (para ENFORCE_FIELDS)
-REQ = {
-    "origen": re.compile(r"\borigen\b"),
-    "destino": re.compile(r"\bdestino\b"),
-    "fecha": re.compile(r"\bfecha\b"),
-    "hora": re.compile(r"\bhora\b"),
-    "cantidad": re.compile(r"\bsomos\s+\d{1,3}\b"),
-}
+# Los campos obligatorios ahora están en normalizer.py
 
 # ================== Carga modelo ==================
 fsz = parse_filter_sizes(FILTER_SIZES_STR)
@@ -32,89 +26,26 @@ model, vocab, id2label, device = load_model(
 )
 label2id = {v: k for k, v in id2label.items()}
 
-# ================== Reglas extra de normalización ==================
-def apply_alias_rules(s: str) -> str:
-    """
-    Reglas complementarias (idempotentes) para capturar variantes comunes.
-    Se asume que 's' ya está en minúsculas (normalize_patterns hace lower()).
-    """
-    # Etiquetas con ":", por si quedan
-    s = re.sub(r"\borigen\s*:\s*", "origen ", s)
-    s = re.sub(r"\bdestino\s*:\s*", "destino ", s)
-    s = re.sub(r"\bdirección de salida\s*:\s*", "origen ", s)
+# Las funciones de normalización están ahora en normalizer.py
 
-    # "desde ... hasta ..." -> origen/destino (también si aparece tras <sep>)
-    s = re.sub(r"(^|<sep>\s*)desde\s+", r"\1origen ", s)
-    s = re.sub(r"\s+hasta\s+", " destino ", s)
-
-    # ORIGEN: frases típicas
-    s = re.sub(r"\bla idea es\s+comenzar en\s+", "origen ", s)
-    s = re.sub(r"\b(partir|salir)\s+desde\s+", "origen ", s)
-    s = re.sub(r"\b(iniciar|inicio)\s+en\s+", "origen ", s)
-
-    # DESTINO: frases típicas
-    s = re.sub(r"\b(nuestro objetivo es\s+)?(llegar a|dirigirse a|ir a|ir hasta|terminar en|finalizar en)\s+", "destino ", s)
-
-    # CANTIDAD: "viajamos N ..." -> "somos N"
-    s = re.sub(r"\bviajamos\s+(\d{1,3})(\s*personas?)?(\s+en\s+total)?\b", r"somos \1", s)
-
-    return s
-
-def normalize_history_and_join(history_msgs, sep="<SEP>"):
-    """
-    Normaliza cada mensaje con normalize_patterns, concatena con <SEP>,
-    y aplica reglas extra sobre el combinado (en minúsculas).
-    Devuelve el texto final que realmente se clasifica.
-    """
-    if APPLY_NORMALIZER:
-        norm_segments = [normalize_patterns(m) for m in history_msgs]
-    else:
-        norm_segments = history_msgs[:]
-
-    joined = f" {sep} ".join(norm_segments)
-    # aplicar reglas extra sobre versión minúscula para detectar "<sep>" y patrones amplios
-    joined_final = apply_alias_rules(joined.lower())
-    return joined_final
-
-# ================== Helpers ==================
-def apply_enforce_fields(texto_norm_joined: str, pred_idx: int) -> int:
-    if not ENFORCE_FIELDS:
-        return pred_idx
-    pred_lbl = id2label[int(pred_idx)]
-    REQ = {
-        "origen": re.compile(r"\borigen\b"),
-        "destino": re.compile(r"\bdestino\b"),
-        "fecha": re.compile(r"\bfecha\b"),
-        "hora": re.compile(r"\bhora\b"),
-        "cantidad": re.compile(r"\bsomos\s+\d{1,3}\b"),
-    }
-    MIN_FIELDS_FOR_QUOTE = 2
-
-    flags = {k: bool(rx.search(texto_norm_joined)) for k, rx in REQ.items()}
-    covered = sum(flags.values())
-
-    if covered == len(REQ):
-        return label2id.get("Cotización generada", pred_idx)
-    if covered >= MIN_FIELDS_FOR_QUOTE and id2label[pred_idx] == "Potencial cliente":
-        return label2id.get("Cotizando", pred_idx)
-    if covered < len(REQ) and id2label[pred_idx] == "Cotización generada":
-        return label2id.get("Cotizando", pred_idx)
-    return pred_idx
+# Los helpers están ahora en normalizer.py
 
 
 def predict_history(history_msgs):
-    texto = normalize_history_and_join(history_msgs)  # string final usado por el modelo
+    texto = normalize_history_and_join(history_msgs, sep="<SEP>", apply_normalizer=APPLY_NORMALIZER)  # string final usado por el modelo
     X = encode_texts([texto], vocab, MAX_LEN).to(device)
     with torch.no_grad():
         logits = model(X)
         probs = torch.softmax(logits, dim=1).cpu().numpy()[0]
         pred_idx = int(logits.argmax(dim=1).cpu().numpy()[0])
-    final_idx = apply_enforce_fields(texto, pred_idx)
+    final_idx = apply_enforce_fields(texto, pred_idx, id2label, label2id, 
+                                   enforce_fields=ENFORCE_FIELDS, min_fields_for_quote=2)
     return id2label[pred_idx], float(probs[pred_idx]), id2label[final_idx], float(probs[final_idx]), texto
 
 # ================== Evaluación ==================
 def evaluar_modelo(test_cases):
     total_steps, total_hits = 0, 0
+    errores = []  # Lista para almacenar todos los errores
 
     for case_idx, caso in enumerate(test_cases):
         print(f"\n================  CASO {case_idx+1}  ================")
@@ -142,6 +73,18 @@ def evaluar_modelo(test_cases):
                 print("DEBUG texto_norm_joined:")
                 # Volvemos a imprimir con <SEP> visible (ya está en minúsculas por join+lower)
                 print(texto_final)
+                
+                # Guardar error para log final
+                errores.append({
+                    'caso': case_idx + 1,
+                    'paso': step_idx,
+                    'mensaje_original': texto,
+                    'prediccion': pred_lbl,
+                    'esperado': esperado,
+                    'texto_normalizado': texto_final,
+                    'confianza_modelo': model_conf,
+                    'confianza_final': final_conf
+                })
 
         acc = steps_hits / len(caso["texto"])
         print(f"Resumen CASO {case_idx+1}: {steps_hits}/{len(caso['texto'])} correctos (acc={acc:.3f})")
@@ -149,6 +92,40 @@ def evaluar_modelo(test_cases):
     overall = total_hits / total_steps if total_steps else 0.0
     print(f"\n================  RESUMEN GLOBAL  ================")
     print(f"Aciertos totales: {total_hits}/{total_steps}  (acc={overall:.3f})")
+    
+    # ================== LOG DE ERRORES ==================
+    if errores:
+        print(f"\n================  LOG COMPLETO DE ERRORES ({len(errores)} errores)  ================")
+        for i, error in enumerate(errores, 1):
+            print(f"\n❌ ERROR #{i}:")
+            print(f"   📍 Caso {error['caso']}, Paso {error['paso']}")
+            print(f"   💬 Mensaje: '{error['mensaje_original']}'")
+            print(f"   🤖 Predicción: {error['prediccion']} (conf: {error['confianza_final']:.3f})")
+            print(f"   ✅ Esperado: {error['esperado']}")
+            print(f"   🔧 Texto normalizado: {error['texto_normalizado']}")
+            
+        print(f"\n📊 RESUMEN DE ERRORES:")
+        # Contar errores por tipo de transición
+        tipos_error = {}
+        for error in errores:
+            key = f"{error['esperado']} ← {error['prediccion']}"
+            tipos_error[key] = tipos_error.get(key, 0) + 1
+        
+        print("   Tipos de error más comunes:")
+        for tipo, count in sorted(tipos_error.items(), key=lambda x: x[1], reverse=True):
+            print(f"   • {tipo}: {count} casos")
+            
+        # Casos más problemáticos
+        casos_errores = {}
+        for error in errores:
+            casos_errores[error['caso']] = casos_errores.get(error['caso'], 0) + 1
+        
+        if len(casos_errores) < len(test_cases):
+            print(f"\n   Casos más problemáticos:")
+            for caso, count in sorted(casos_errores.items(), key=lambda x: x[1], reverse=True)[:5]:
+                print(f"   • Caso {caso}: {count} errores")
+    else:
+        print(f"\n🎉 ¡PERFECTO! No hay errores en la evaluación.")
 
 if __name__ == "__main__":
     # Debes tener un archivo test_cases.py con la variable `test_cases`
