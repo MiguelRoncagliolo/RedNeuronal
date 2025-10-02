@@ -219,7 +219,7 @@ def parse_filter_sizes(s: str):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", type=str, required=True)
-    parser.add_argument("--text_col", type=str, default="window_text")
+    parser.add_argument("--text_col", type=str, default="text")
     parser.add_argument("--label_col", type=str, default="label")
     parser.add_argument("--group_col", type=str, default="chat_id")
     parser.add_argument("--min_freq", type=int, default=2)
@@ -246,7 +246,12 @@ def main():
     set_seed(args.seed)
     os.makedirs(args.save_dir, exist_ok=True)
 
-    df = pd.read_csv(args.data)
+    # Cargar dataset según extensión
+    if args.data.endswith('.jsonl'):
+        df = pd.read_json(args.data, lines=True)
+    else:
+        df = pd.read_csv(args.data)
+    
     df = df.dropna(subset=[args.text_col, args.label_col]).copy()
 
     # Normaliza por mensaje ANTES de construir ventanas de contexto
