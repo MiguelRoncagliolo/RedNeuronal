@@ -1,23 +1,38 @@
 import json
 import sys
+import argparse
 
-# Cargar métricas desde metrics.json
-try:
-    with open("metrics.json", "r") as f:
-        metrics = json.load(f)
-except FileNotFoundError:
-    print("No se encontró metrics.json. ¿Ejecutaste primero train.py?")
-    sys.exit(1)
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--metrics_file", type=str, default="metrics.json", 
+                       help="Ruta al archivo de métricas (default: metrics.json)")
+    parser.add_argument("--min_accuracy", type=float, default=0.96,
+                       help="Accuracy mínimo para aprobar el modelo (default: 0.96)")
+    parser.add_argument("--max_accuracy", type=float, default=1.0,
+                       help="Accuracy máximo para aprobar el modelo (default: 1.0)")
+    
+    args = parser.parse_args()
 
-accuracy = metrics.get("accuracy", 0)
-f1 = metrics.get("f1", 0)
+    # Cargar métricas desde metrics.json
+    try:
+        with open(args.metrics_file, "r") as f:
+            metrics = json.load(f)
+    except FileNotFoundError:
+        print(f"No se encontró {args.metrics_file}. ¿Ejecutaste primero train.py?")
+        sys.exit(1)
 
-print(f"Accuracy: {accuracy:.4f}, F1: {f1:.4f}")
+    accuracy = metrics.get("accuracy", 0)
+    f1 = metrics.get("f1", 0)
 
-# Reglas de aprobación
-if accuracy < 0.96 or accuracy == 1.0:
-    print("Modelo rechazado: accuracy fuera de rango")
-    sys.exit(1)
-else:
-    print("Modelo aprobado")
-    sys.exit(0)
+    print(f"Accuracy: {accuracy:.4f}, F1: {f1:.4f}")
+
+    # Reglas de aprobación
+    if accuracy < args.min_accuracy or accuracy >= args.max_accuracy:
+        print(f"Modelo rechazado: accuracy ({accuracy:.4f}) fuera de rango [{args.min_accuracy}, {args.max_accuracy})")
+        sys.exit(1)
+    else:
+        print("Modelo aprobado")
+        sys.exit(0)
+
+if __name__ == "__main__":
+    main()
