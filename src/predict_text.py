@@ -6,16 +6,12 @@ import torch
 import numpy as np
 from torch import nn
 
-# -------- utils ----------
 def basic_tokenize(text: str):
     text = str(text).lower()
     text = re.sub(r"\s+", " ", text.strip())
     return text.split()
 
-# Importar normalizador unificado
 from normalizer import normalize_patterns
-
-
 
 class Vocab:
     def __init__(self, itos):
@@ -73,7 +69,6 @@ def encode_texts(texts, vocab, max_len=160):
         batch.append(ids)
     return torch.tensor(batch, dtype=torch.long)
 
-# -------- main ----------
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--text", nargs="+", help="Uno o varios textos a clasificar (si no usas --history)")
@@ -92,7 +87,6 @@ if __name__ == "__main__":
     parser.add_argument("--filter_sizes", type=str, default="2,3,4,5", help='Ej: "2,3,4,5"')
     args = parser.parse_args()
 
-    # Construir el texto final
     if args.history:
         joined = f" {args.context_sep} ".join(args.history)
         texts = [joined]
@@ -126,14 +120,18 @@ if __name__ == "__main__":
         probs = torch.softmax(logits, dim=1).cpu().numpy()
         preds = logits.argmax(dim=1).cpu().numpy()
 
-    # Regla opcional: exigir campos usando normalizador unificado
     if args.enforce_fields:
         from normalizer import apply_enforce_fields
         label2id_local = {v: k for k, v in id2label.items()}
         fixed = []
         for t, pidx in zip(texts, preds):
-            fixed_idx = apply_enforce_fields(t, pidx, id2label, label2id_local, 
-                                           enforce_fields=True, min_fields_for_quote=2)
+            fixed_idx = apply_enforce_fields(
+                texto_norm_joined=t,
+                pred_idx=pidx,
+                id2label=id2label,
+                label2id=label2id_local,
+                enforce_fields=True,
+            )
             fixed.append(fixed_idx)
         preds = np.array(fixed)
 

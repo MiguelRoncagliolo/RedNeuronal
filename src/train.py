@@ -1,5 +1,5 @@
 """
-TextCNN training script (multi-turn ready) for chat_user_turns_v4_5000.csv
+TextCNN training script (multi-turn ready)
 """
 
 import argparse
@@ -12,7 +12,6 @@ from sklearn.metrics import accuracy_score
 
 import numpy as np
 
-# Try to import torch/sklearn; give a friendly error if unavailable
 try:
     import torch
     from torch import nn
@@ -47,8 +46,11 @@ def basic_tokenize(text: str):
     return text.split()
 
 
-# Importar normalizador unificado
-from normalizer import normalize_patterns
+# Importar normalizador unificado de forma segura
+try:
+    from normalizer import normalize_patterns
+except ImportError:
+    normalize_patterns = None
 
 
 class Vocab:
@@ -158,8 +160,12 @@ def build_context_windows(df, text_col, group_col, k, sep):
     if k <= 0:
         df["context_text"] = df[text_col].astype(str)
         return df
+    
     if "msg_idx" not in df.columns:
-        raise ValueError("Para contexto multi-turno necesitas columna 'msg_idx' para ordenar los mensajes.")
+        print("ADVERTENCIA: No se encontro columna 'msg_idx'. Usando contexto simple (k=0).")
+        df["context_text"] = df[text_col].astype(str)
+        return df
+    
     out_rows = []
     for chat_id, grp in df.groupby(group_col):
         grp = grp.sort_values("msg_idx").copy()
@@ -246,7 +252,6 @@ def main():
     set_seed(args.seed)
     os.makedirs(args.save_dir, exist_ok=True)
 
-    # Cargar dataset según extensión
     if args.data.endswith('.jsonl'):
         df = pd.read_json(args.data, lines=True)
     else:
@@ -254,8 +259,9 @@ def main():
     
     df = df.dropna(subset=[args.text_col, args.label_col]).copy()
 
-    # Normaliza por mensaje ANTES de construir ventanas de contexto
     if args.normalize_patterns:
+        if normalize_patterns is None:
+            raise RuntimeError("Se solicitó --normalize_patterns pero no se pudo importar normalizer.py")
         df[args.text_col] = df[args.text_col].astype(str).apply(normalize_patterns)
 
     df = build_context_windows(df, args.text_col, args.group_col, args.context_window, args.context_sep)
@@ -266,15 +272,17 @@ def main():
     id2label = {i: lbl for lbl, i in label2id.items()}
     df["label_id"] = df[args.label_col].map(label2id)
 
-    token_lists = [basic_tokenize(t) for t in df[used_text_col].astype(str).tolist()]
-    vocab = Vocab(min_freq=args.min_freq, max_size=args.max_size)
-    vocab.build(token_lists)
-
     if args.group_col in df.columns:
         train_df, val_df, test_df = split_by_group(df, args.label_col, args.group_col, args.seed)
     else:
         train_df, rest_df = train_test_split(df, test_size=0.3, random_state=args.seed, stratify=df[args.label_col])
         val_df, test_df = train_test_split(rest_df, test_size=0.5, random_state=args.seed, stratify=rest_df[args.label_col])
+
+    print("Construyendo vocabulario solo con datos de entrenamiento...")
+    token_lists_train = [basic_tokenize(t) for t in train_df[used_text_col].astype(str).tolist()]
+    vocab = Vocab(min_freq=args.min_freq, max_size=args.max_size)
+    vocab.build(token_lists_train)
+    print(f"Vocabulario construido: {len(vocab)} tokens unicos")
 
     train_ds = TextDataset(train_df, used_text_col, args.label_col, vocab, label2id, args.max_len)
     val_ds   = TextDataset(val_df,   used_text_col, args.label_col, vocab, label2id, args.max_len)
@@ -333,19 +341,18 @@ def main():
     print("\n===== TEST RESULTS =====")
     print(f"test_loss {test_loss:.4f} | test_f1 {test_f1:.4f}")
 
-    # Calcular accuracy además de F1
     test_acc = accuracy_score(y_true, y_pred)
 
-    # Guardar métricas en metrics.json
     metrics = {
         "accuracy": float(test_acc),
         "f1": float(test_f1),
         "loss": float(test_loss)
     }
-    with open("metrics.json", "w") as f:
+    metrics_path = os.path.join(args.save_dir, "metrics.json")
+    with open(metrics_path, "w") as f:
         json.dump(metrics, f)
 
-    print(f"📊 Metrics guardadas en metrics.json -> {metrics}")
+    print(f"Metrics guardadas en {metrics_path} -> {metrics}")
 
 
     print("\nClassification report:")

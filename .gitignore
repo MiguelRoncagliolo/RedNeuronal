@@ -1,0 +1,28 @@
+node_modules/
+.env
+docker-compose.yml
+
+# ── IDEs
+.idea/
+*.iml
+.vscode/
+*.code-workspace
+
+# ── Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+.build/
+dist/
+pip-wheel-metadata/
+.cache/
+.ipynb_checkpoints/
+
+# ── Entornos
+.venv/
+venv/
+env/
+ENV/

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Data Audit Script - Auditoría automatizada del dataset
 
@@ -9,7 +8,7 @@ Genera reportes de calidad de datos incluyendo:
 - Resumen de hallazgos en markdown
 
 Uso:
-    python src/data_audit.py --in data/dataset.csv --out artifacts_textcnn/audit/
+    python reports/dataset_audit/data_audit.py --in data/dataset.jsonl --out artifacts_textcnn/audit/
 """
 
 import argparse
@@ -29,17 +28,14 @@ def detect_dataset(data_dir="data"):
     """
     data_path = Path(data_dir)
     
-    # Prioridad 1: dataset.csv
     priority_file = data_path / "dataset.csv"
     if priority_file.exists():
         return str(priority_file)
-    
-    # Prioridad 2: cualquier CSV en /data
+
     csv_files = list(data_path.glob("*.csv"))
     if csv_files:
-        return str(csv_files[0])  # toma el primero
+        return str(csv_files[0])
     
-    # Prioridad 3: cualquier JSONL en /data
     jsonl_files = list(data_path.glob("*.jsonl"))
     if jsonl_files:
         return str(jsonl_files[0])
@@ -55,35 +51,30 @@ def infer_columns(df):
     columns = df.columns.tolist()
     detected = {}
     
-    # Buscar columna de texto principal
     text_candidates = ['window_text', 'text', 'message', 'content', 'input', 'query']
     for col in text_candidates:
         if col in columns:
             detected['text_col'] = col
             break
     
-    # Buscar columna de etiquetas
     label_candidates = ['label', 'class', 'target', 'category', 'classification']
     for col in label_candidates:
         if col in columns:
             detected['label_col'] = col
             break
     
-    # Buscar columna de ID de conversación
     chat_candidates = ['chat_id', 'conversation_id', 'session_id', 'conv_id']
     for col in chat_candidates:
         if col in columns:
             detected['chat_col'] = col
             break
     
-    # Buscar columna de ID único
     id_candidates = ['id', 'message_id', 'unique_id', 'idx']
     for col in id_candidates:
         if col in columns:
             detected['id_col'] = col
             break
     
-    # Buscar columna de índice de mensaje
     msg_idx_candidates = ['msg_idx', 'message_idx', 'turn', 'step']
     for col in msg_idx_candidates:
         if col in columns:
@@ -109,7 +100,6 @@ def analyze_dataset(df, detected_cols, dataset_path):
         }
     }
     
-    # ===== ANÁLISIS DE NULOS =====
     null_analysis = {}
     for col in df.columns:
         null_count = df[col].isnull().sum()
@@ -120,7 +110,6 @@ def analyze_dataset(df, detected_cols, dataset_path):
         }
     analysis['nulls'] = null_analysis
     
-    # ===== ANÁLISIS DE DISTRIBUCIÓN DE CLASES =====
     if 'label_col' in detected_cols:
         label_col = detected_cols['label_col']
         class_dist = df[label_col].value_counts().to_dict()
@@ -134,16 +123,13 @@ def analyze_dataset(df, detected_cols, dataset_path):
     else:
         analysis['class_distribution'] = {'error': 'No se detectó columna de etiquetas'}
     
-    # ===== ANÁLISIS DE DUPLICADOS =====
     if 'text_col' in detected_cols and 'label_col' in detected_cols:
         text_col = detected_cols['text_col']
         label_col = detected_cols['label_col']
         
-        # Duplicados exactos (texto + label)
         exact_dupes = df.duplicated(subset=[text_col, label_col], keep=False)
         num_exact_dupes = exact_dupes.sum()
         
-        # Duplicados solo por texto (diferentes labels)
         text_dupes = df.duplicated(subset=[text_col], keep=False)
         num_text_dupes = text_dupes.sum()
         
@@ -154,14 +140,12 @@ def analyze_dataset(df, detected_cols, dataset_path):
             'text_duplicate_percentage': round((num_text_dupes / len(df)) * 100, 2)
         }
         
-        # Guardar duplicados para reporte
         if num_exact_dupes > 0:
             analysis['duplicate_examples'] = df[exact_dupes].to_dict('records')
         
     else:
         analysis['duplicates'] = {'error': 'No se detectaron columnas de texto y/o etiquetas'}
     
-    # ===== ANÁLISIS DE LONGITUDES DE TEXTO =====
     if 'text_col' in detected_cols:
         text_col = detected_cols['text_col']
         text_lengths = df[text_col].astype(str).str.len()
@@ -177,23 +161,21 @@ def analyze_dataset(df, detected_cols, dataset_path):
             'std': round(text_lengths.std(), 2)
         }
         
-        # Ejemplos de textos extremos
         min_idx = text_lengths.idxmin()
         max_idx = text_lengths.idxmax()
         analysis['text_examples'] = {
             'shortest': {
                 'length': int(text_lengths[min_idx]),
-                'text': str(df.loc[min_idx, text_col])[:200]  # truncar si es muy largo
+                'text': str(df.loc[min_idx, text_col])[:200]
             },
             'longest': {
                 'length': int(text_lengths[max_idx]),
-                'text': str(df.loc[max_idx, text_col])[:200]  # truncar si es muy largo
+                'text': str(df.loc[max_idx, text_col])[:200]
             }
         }
     else:
         analysis['text_lengths'] = {'error': 'No se detectó columna de texto'}
     
-    # ===== ANÁLISIS DE CONVERSACIONES =====
     if 'chat_col' in detected_cols:
         chat_col = detected_cols['chat_col']
         unique_chats = df[chat_col].nunique()
@@ -220,7 +202,6 @@ def generate_reports(analysis, output_dir):
     """
     os.makedirs(output_dir, exist_ok=True)
     
-    # ===== class_dist.csv =====
     if 'class_distribution' in analysis and 'counts' in analysis['class_distribution']:
         class_data = []
         counts = analysis['class_distribution']['counts']
@@ -236,28 +217,24 @@ def generate_reports(analysis, output_dir):
         class_df = pd.DataFrame(class_data)
         class_df.to_csv(os.path.join(output_dir, 'class_dist.csv'), index=False)
     
-    # ===== dupes.csv =====
     if 'duplicate_examples' in analysis:
         dupes_df = pd.DataFrame(analysis['duplicate_examples'])
         dupes_df.to_csv(os.path.join(output_dir, 'dupes.csv'), index=False)
     else:
-        # Crear CSV vacío si no hay duplicados
         empty_dupes = pd.DataFrame(columns=['info'])
         empty_dupes.loc[0] = ['No se encontraron duplicados exactos']
         empty_dupes.to_csv(os.path.join(output_dir, 'dupes.csv'), index=False)
     
-    # ===== len_stats.csv =====
     if 'text_lengths' in analysis and 'min' in analysis['text_lengths']:
         len_stats = []
         stats = analysis['text_lengths']
         for stat_name, value in stats.items():
-            if stat_name not in ['shortest', 'longest']:  # excluir ejemplos
+            if stat_name not in ['shortest', 'longest']:
                 len_stats.append({'statistic': stat_name, 'value': value})
         
         len_df = pd.DataFrame(len_stats)
         len_df.to_csv(os.path.join(output_dir, 'len_stats.csv'), index=False)
     
-    # ===== audit.md =====
     generate_audit_markdown(analysis, output_dir)
 
 
@@ -265,16 +242,16 @@ def generate_audit_markdown(analysis, output_dir):
     """
     Genera el reporte markdown con hallazgos clave.
     """
-    md_content = f"""# Auditoría de Dataset - {analysis['meta']['analysis_timestamp']}
+    md_content = f"""# Auditoria de Dataset - {analysis['meta']['analysis_timestamp']}
 
-## 📊 Información General
+## Informacion General
 
 - **Dataset**: `{analysis['meta']['dataset_path']}`
 - **Total de filas**: {analysis['meta']['total_rows']:,}
 - **Total de columnas**: {analysis['meta']['total_cols']}
-- **Fecha de análisis**: {analysis['meta']['analysis_timestamp']}
+- **Fecha de analisis**: {analysis['meta']['analysis_timestamp']}
 
-## 🔍 Columnas Detectadas
+## Columnas Detectadas
 
 **Todas las columnas disponibles:**
 {', '.join([f'`{col}`' for col in analysis['meta']['columns']])}
@@ -287,10 +264,9 @@ def generate_audit_markdown(analysis, output_dir):
         for key, col in detected.items():
             md_content += f"- **{key.replace('_', ' ').title()}**: `{col}`\n"
     else:
-        md_content += "- ⚠️ No se pudieron inferir columnas automáticamente\n"
+        md_content += "- ADVERTENCIA: No se pudieron inferir columnas automaticamente\n"
     
-    # ===== DISTRIBUCIÓN DE CLASES =====
-    md_content += "\n## 🎯 Distribución de Clases\n\n"
+    md_content += "\n## Distribucion de Clases\n\n"
     
     if 'class_distribution' in analysis and 'counts' in analysis['class_distribution']:
         class_dist = analysis['class_distribution']
@@ -302,7 +278,6 @@ def generate_audit_markdown(analysis, output_dir):
             pct = class_dist['percentages'].get(label, 0)
             md_content += f"| {label} | {count:,} | {pct}% |\n"
         
-        # Análisis de balance
         percentages = list(class_dist['percentages'].values())
         max_pct = max(percentages)
         min_pct = min(percentages)
@@ -311,16 +286,15 @@ def generate_audit_markdown(analysis, output_dir):
         md_content += f"\n**Balance de clases**: {balance_ratio:.2f}:1 (mayor:menor)\n"
         
         if balance_ratio > 3:
-            md_content += "⚠️ **ADVERTENCIA**: Dataset significativamente desbalanceado\n"
+            md_content += "ADVERTENCIA: Dataset significativamente desbalanceado\n"
         elif balance_ratio > 1.5:
-            md_content += "⚡ Dataset moderadamente desbalanceado\n"
+            md_content += "Dataset moderadamente desbalanceado\n"
         else:
-            md_content += "✅ Dataset balanceado\n"
+            md_content += "Dataset balanceado\n"
     else:
-        md_content += "❌ No se pudo analizar distribución de clases\n"
+        md_content += "ERROR: No se pudo analizar distribucion de clases\n"
     
-    # ===== DUPLICADOS =====
-    md_content += "\n## 🔄 Análisis de Duplicados\n\n"
+    md_content += "\n## Analisis de Duplicados\n\n"
     
     if 'duplicates' in analysis and 'exact_duplicates' in analysis['duplicates']:
         dupes = analysis['duplicates']
@@ -328,18 +302,17 @@ def generate_audit_markdown(analysis, output_dir):
         md_content += f"- **Duplicados de texto** (diferentes etiquetas): {dupes['text_only_duplicates']:,} ({dupes['text_duplicate_percentage']}%)\n\n"
         
         if dupes['exact_duplicates'] > 0:
-            md_content += "⚠️ **RECOMENDACIÓN**: Revisar y eliminar duplicados exactos\n"
+            md_content += "RECOMENDACION: Revisar y eliminar duplicados exactos\n"
         
         if dupes['text_only_duplicates'] > dupes['exact_duplicates']:
-            md_content += "🔍 **ATENCIÓN**: Textos iguales con etiquetas diferentes - posible inconsistencia en anotación\n"
+            md_content += "ATENCION: Textos iguales con etiquetas diferentes - posible inconsistencia en anotacion\n"
         
         if dupes['exact_duplicates'] == 0 and dupes['text_only_duplicates'] == 0:
-            md_content += "✅ No se encontraron duplicados\n"
+            md_content += "No se encontraron duplicados\n"
     else:
-        md_content += "❌ No se pudo analizar duplicados\n"
+        md_content += "ERROR: No se pudo analizar duplicados\n"
     
-    # ===== LONGITUDES DE TEXTO =====
-    md_content += "\n## 📏 Estadísticas de Longitud de Texto\n\n"
+    md_content += "\n## Estadisticas de Longitud de Texto\n\n"
     
     if 'text_lengths' in analysis and 'min' in analysis['text_lengths']:
         lengths = analysis['text_lengths']
@@ -354,39 +327,35 @@ def generate_audit_markdown(analysis, output_dir):
         md_content += f"| Promedio | {lengths['mean']} caracteres |\n"
         md_content += f"| Desviación estándar | {lengths['std']} caracteres |\n\n"
         
-        # Ejemplos
         if 'text_examples' in analysis:
             examples = analysis['text_examples']
-            md_content += "### 📝 Ejemplos de Textos\n\n"
-            md_content += f"**Texto más corto** ({examples['shortest']['length']} caracteres):\n"
+            md_content += "### Ejemplos de Textos\n\n"
+            md_content += f"**Texto mas corto** ({examples['shortest']['length']} caracteres):\n"
             md_content += f"```\n{examples['shortest']['text']}\n```\n\n"
-            md_content += f"**Texto más largo** ({examples['longest']['length']} caracteres):\n"
+            md_content += f"**Texto mas largo** ({examples['longest']['length']} caracteres):\n"
             md_content += f"```\n{examples['longest']['text']}\n```\n\n"
         
-        # Alertas
         if lengths['min'] < 10:
-            md_content += "⚠️ **ADVERTENCIA**: Textos muy cortos detectados (< 10 caracteres)\n"
+            md_content += "ADVERTENCIA: Textos muy cortos detectados (< 10 caracteres)\n"
         
         if lengths['max'] > 1000:
-            md_content += "⚠️ **ADVERTENCIA**: Textos muy largos detectados (> 1000 caracteres)\n"
+            md_content += "ADVERTENCIA: Textos muy largos detectados (> 1000 caracteres)\n"
     else:
-        md_content += "❌ No se pudo analizar longitudes de texto\n"
+        md_content += "ERROR: No se pudo analizar longitudes de texto\n"
     
-    # ===== CONVERSACIONES =====
     if 'conversations' in analysis and 'unique_conversations' in analysis['conversations']:
         convs = analysis['conversations']
-        md_content += "\n## 💬 Análisis de Conversaciones\n\n"
+        md_content += "\n## Analisis de Conversaciones\n\n"
         md_content += f"- **Conversaciones únicas**: {convs['unique_conversations']:,}\n"
         md_content += f"- **Mensajes promedio por conversación**: {convs['avg_messages_per_conversation']}\n"
-        md_content += f"- **Conversación más corta**: {convs['min_messages_in_chat']} mensajes\n"
-        md_content += f"- **Conversación más larga**: {convs['max_messages_in_chat']} mensajes\n"
+        md_content += f"- **Conversacion mas corta**: {convs['min_messages_in_chat']} mensajes\n"
+        md_content += f"- **Conversacion mas larga**: {convs['max_messages_in_chat']} mensajes\n"
         md_content += f"- **Mediana de mensajes**: {convs['median_messages_in_chat']} mensajes\n\n"
         
         if convs['avg_messages_per_conversation'] < 2:
-            md_content += "⚠️ **OBSERVACIÓN**: Conversaciones muy cortas en promedio\n"
+            md_content += "OBSERVACION: Conversaciones muy cortas en promedio\n"
     
-    # ===== VALORES NULOS =====
-    md_content += "\n## 🚫 Análisis de Valores Nulos\n\n"
+    md_content += "\n## Analisis de Valores Nulos\n\n"
     md_content += "| Columna | Nulos | Porcentaje |\n"
     md_content += "|---------|-------|------------|\n"
     
@@ -399,37 +368,31 @@ def generate_audit_markdown(analysis, output_dir):
             has_nulls = True
     
     if not has_nulls:
-        md_content += "\n✅ No se encontraron valores nulos\n"
+        md_content += "\nNo se encontraron valores nulos\n"
     else:
-        md_content += "\n⚠️ **RECOMENDACIÓN**: Revisar y manejar valores nulos antes del entrenamiento\n"
+        md_content += "\nRECOMENDACION: Revisar y manejar valores nulos antes del entrenamiento\n"
     
-    # ===== HALLAZGOS CLAVE =====
-    md_content += "\n## 🔑 Hallazgos Clave\n\n"
+    md_content += "\n## Hallazgos Clave\n\n"
     
     key_findings = []
     
-    # Sobre el dataset
     key_findings.append(f"Dataset con {analysis['meta']['total_rows']:,} filas y {analysis['meta']['total_cols']} columnas")
     
-    # Sobre clases
     if 'class_distribution' in analysis and 'counts' in analysis['class_distribution']:
         num_classes = analysis['class_distribution']['num_classes']
         key_findings.append(f"Problema de clasificación con {num_classes} clases")
     
-    # Sobre duplicados
     if 'duplicates' in analysis and 'exact_duplicates' in analysis['duplicates']:
         exact_dupes = analysis['duplicates']['exact_duplicates']
         if exact_dupes > 0:
-            key_findings.append(f"⚠️ {exact_dupes:,} duplicados exactos requieren atención")
+            key_findings.append(f"{exact_dupes:,} duplicados exactos requieren atencion")
         else:
-            key_findings.append("✅ No hay duplicados exactos")
+            key_findings.append("No hay duplicados exactos")
     
-    # Sobre longitudes
     if 'text_lengths' in analysis and 'min' in analysis['text_lengths']:
         p50 = analysis['text_lengths']['p50']
         key_findings.append(f"Longitud mediana de texto: {p50} caracteres")
     
-    # Sobre conversaciones
     if 'conversations' in analysis and 'unique_conversations' in analysis['conversations']:
         chats = analysis['conversations']['unique_conversations']
         avg_msgs = analysis['conversations']['avg_messages_per_conversation']
@@ -438,8 +401,7 @@ def generate_audit_markdown(analysis, output_dir):
     for finding in key_findings:
         md_content += f"- {finding}\n"
     
-    # ===== RECOMENDACIONES =====
-    md_content += "\n## 💡 Recomendaciones\n\n"
+    md_content += "\n## Recomendaciones\n\n"
     
     recommendations = []
     
@@ -460,12 +422,11 @@ def generate_audit_markdown(analysis, output_dir):
             recommendations.append("Considerar truncar textos muy largos (> 1000 caracteres)")
     
     if not recommendations:
-        recommendations.append("✅ Dataset en buena condición para entrenamiento")
+        recommendations.append("Dataset en buena condicion para entrenamiento")
     
     for rec in recommendations:
         md_content += f"- {rec}\n"
     
-    # Guardar archivo
     with open(os.path.join(output_dir, 'audit.md'), 'w', encoding='utf-8') as f:
         f.write(md_content)
 
@@ -479,7 +440,6 @@ def main():
     
     args = parser.parse_args()
     
-    # Detectar dataset automáticamente si no se especifica
     if args.input_path:
         dataset_path = args.input_path
         if not os.path.exists(dataset_path):
@@ -494,7 +454,6 @@ def main():
             sys.exit(1)
         print(f"Dataset detected: {dataset_path}")
     
-    # Cargar dataset
     print(f"Loading dataset from: {dataset_path}")
     try:
         if dataset_path.endswith('.csv'):
@@ -511,16 +470,13 @@ def main():
         print(f"ERROR loading dataset: {e}")
         sys.exit(1)
     
-    # Inferir columnas
     print("Inferring dataset columns...")
     detected_cols = infer_columns(df)
     print(f"Detected columns: {detected_cols}")
     
-    # Realizar análisis
     print("Performing complete analysis...")
     analysis = analyze_dataset(df, detected_cols, dataset_path)
     
-    # Generar reportes
     print(f"Generating reports in: {args.output_dir}")
     generate_reports(analysis, args.output_dir)
     

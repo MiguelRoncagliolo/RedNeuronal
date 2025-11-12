@@ -1,0 +1,266 @@
+test_cases = [
+    # Caso 1
+    {
+        'texto': [
+            "Hola",
+            "Me llamo Ana",
+            "Quisiera cotizar un traslado",
+            "Desde Las Condes 200, Santiago hasta Picarte 123, Valdivia",
+            "Somos 3 personas",
+            "Salida el 5 de octubre de 2025 a las 13:30",
+            "Con regreso a las 18:00",
+            "Gracias",
+            "Eso sería",
+        ],
+        'esperado': [
+            "Potencial cliente",
+            "Potencial cliente",
+            "Potencial cliente",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+        ]
+    },
+    # Caso 2
+    {
+        'texto': [
+            "Buenos días",
+            "Quiero viajar con mi familia",
+            "origen Alameda 2000, Concepción",
+            "destino Baquedano 450, Temuco",
+            "somos 5",
+            "fecha 03/09/2025",
+            "hora 12hr",
+            "ida y vuelta",
+            "¿Tiempo estimado?",
+            "Listo, gracias",
+        ],
+        'esperado': [
+            "Potencial cliente",
+            "Potencial cliente",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+        ]
+    },
+    # Caso 3
+    {
+        'texto': [
+            "Hola equipo",
+            "¿Hacen traslados al aeropuerto?",
+            "Origen: Av. Matta 890, Santiago",
+            "Destino: Aeropuerto de La Serena",
+            "para 10 personas",
+            "salimos el 21 de diciembre a las 7",
+            "solo ida",
+            "¿Se puede pagar con tarjeta?",
+            "Genial",
+            "Gracias!",
+        ],
+        'esperado': [
+            "Potencial cliente",
+            "Potencial cliente",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+        ]
+    },
+    # Caso 4
+    {
+        'texto': [
+            "Hola!",
+            "Necesito traslado corporativo",
+            "Origen: Camino Real 1200, Chicureo",
+            "Destino: Estación Central",
+            "somos 8 personas",
+            "Salida el 04/10 a las 08:00",
+            "Con regreso a las 13:45",
+            "Factura electrónica, por favor",
+            "Quedo atento",
+        ],
+        'esperado': [
+            "Potencial cliente",
+            "Potencial cliente",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+        ]
+    },
+    # Caso 5
+    {
+        'texto': [
+            "Buenas",
+            "Quiero cotizar un viaje",
+            "1 Norte 1161, Viña del Mar hasta Nueva Imperial 5162, Santiago",
+            "somos 4",
+            "fecha 27-06-2025",
+            "hora 12:00",
+            "solo ida",
+            "Ok",
+            "Gracias",
+        ],
+        'esperado': [
+            "Potencial cliente",
+            "Potencial cliente",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+        ]
+    },
+    # Caso 6
+    {
+        'texto': [
+            "Hola",
+            "Quiero una cotización",
+            "Viaje el 10 de enero a las 15:00",
+            "somos 2",
+            "Origen: Av. Alemania 50, Temuco",
+            "Destino: Av. Costanera 1000, Valdivia",
+            "sin regreso",
+            "Gracias",
+            "Espero respuesta",
+            "Saludos",
+        ],
+        'esperado': [
+            "Potencial cliente",
+            "Potencial cliente",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+        ]
+    },
+    # Caso 7
+    {
+        'texto': [
+            "Hola, necesito traslado",
+            "Dirección de salida: Av. Matucana 123, Santiago",
+            "Destino: Mall Marina, Viña del Mar",
+            "Somos 12 personas",
+            "Salida el 03/11/2025 a las 08:30",
+            "Con regreso a las 22:30",
+            "¿Incluyen espera?",
+            "Ok",
+            "Gracias",
+            "Hasta luego",
+        ],
+        'esperado': [
+            "Potencial cliente",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+        ]
+    },
+    # Caso 8
+    {
+        'texto': [
+            "Hola!",
+            "Quiero cotizar",
+            "somos 4",
+            "Desde Puerto Montt centro hasta Osorno terminal",
+            "salimos el 3 de noviembre a las 08h",
+            "solo ida",
+            "Factura por favor",
+            "¿Tiempo estimado?",
+            "Ok",
+            "Gracias",
+        ],
+        'esperado': [
+            "Potencial cliente",
+            "Potencial cliente",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+        ]
+    },
+    # Caso 9
+    {
+        'texto': [
+            "Buenos días",
+            "Consulta rápida",
+            "Destino: Aeropuerto Arturo Merino Benítez",
+            "Origen: Av. Apoquindo 4500, Las Condes",
+            "somos 3",
+            "fecha 18/07",
+            "hora 06:45",
+            "ida y vuelta",
+            "¿Incluye silla infantil?",
+            "Gracias",
+        ],
+        'esperado': [
+            "Potencial cliente",
+            "Potencial cliente",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+        ]
+    },
+    # Caso 10
+    {
+        'texto': [
+            "Hola, quiero saber precios",
+            "Mi nombre es Carlos",
+            "somos 5",
+            "¿Hay disponibilidad el 12 de agosto?",
+            "Origen: Talca, 1 Sur 300",
+            "Destino: Curicó, Manso de Velasco 200",
+            "Salida el 12 de agosto a las 09:00",
+            "Con regreso a las 17:30",
+            "Gracias",
+            "Quedo atento",
+        ],
+        'esperado': [
+            "Potencial cliente",
+            "Potencial cliente",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotizando",
+            "Cotización generada",
+            "Cotización generada",
+            "Cotización generada",
+        ]
+    },
+]
